@@ -19,7 +19,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # ----------------------------------------
 SECRET_KEY = env('SECRET_KEY', default='change-me-in-production')
 DEBUG = env.bool('DEBUG', default=True)
-ALLOWED_HOSTS = env.str('ALLOWED_HOSTS', default='*').split(',')
+ALLOWED_HOSTS = env('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+print("✅ ALLOWED_HOSTS =>", ALLOWED_HOSTS)
 
 # ----------------------------------------
 # 4️⃣ Installed Apps
