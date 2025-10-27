@@ -1,11 +1,22 @@
 from django.contrib import admin
 from .models import *
 
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    list_display = ['email', 'username', 'first_name', 'last_name', 'role', 'is_active']
-    list_filter = ['role', 'is_active', 'date_joined']
+class UserAdmin(BaseUserAdmin):
+    list_display = ['email', 'username', 'first_name', 'last_name', 'role', 'is_active', 'date_joined']
+    list_filter = ['role', 'is_active', 'is_staff', 'date_joined']
     search_fields = ['email', 'username', 'first_name', 'last_name']
+    ordering = ['-date_joined']
+    
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Custom Fields', {'fields': ('profilePic', 'number', 'gender', 'role', 'location_lat', 'location_lng')}),
+    )
+    
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Custom Fields', {'fields': ('email', 'profilePic', 'number', 'gender', 'role')}),
+    )
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
