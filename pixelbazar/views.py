@@ -1077,7 +1077,10 @@ def get_orders(request):
 def create_order_api(request):
     try:
         data = request.data
-        print(f"Order data received: {data}")
+        print(f"🔍 DEBUG - Full order data received: {data}")
+        print(f"🔍 DEBUG - Received products: {data.get('products', [])}")
+        print(f"🔍 DEBUG - Products type: {type(data.get('products', []))}")
+        print(f"🔍 DEBUG - Products length: {len(data.get('products', []))}")
         
         # Create address from form data if provided
         address = None
@@ -1132,7 +1135,9 @@ def create_order_api(request):
                 print(f"Product {product_id} not found")
                 continue
         
-        print(f"Final products_data array: {products_data}")
+        print(f"🔍 DEBUG - Final products_data array: {products_data}")
+        print(f"🔍 DEBUG - Final products_data type: {type(products_data)}")
+        print(f"🔍 DEBUG - Final products_data length: {len(products_data)}")
         
         # Create order with address and customer details
         order = Order.objects.create(
@@ -1156,9 +1161,11 @@ def create_order_api(request):
         )
         
         # Save products_data separately to ensure it's saved
+        print(f"🔍 DEBUG - About to save products_data: {products_data}")
         order.products_data = products_data
         order.save()
-        print(f"Products_data saved to order: {order.products_data}")
+        print(f"🔍 DEBUG - Products_data saved to order: {order.products_data}")
+        print(f"🔍 DEBUG - Saved products_data type: {type(order.products_data)}")
         
         # Set estimated delivery date
         from datetime import datetime, timedelta
@@ -1180,12 +1187,15 @@ def create_order_api(request):
         
         # Debug: Final verification
         order.refresh_from_db()
-        print(f"Final verification - Order {order.order_id} products_data: {order.products_data}")
-        print(f"Final products_data length: {len(order.products_data)}")
+        print(f"🔍 DEBUG - Final verification - Order {order.order_id} products_data: {order.products_data}")
+        print(f"🔍 DEBUG - Final products_data length: {len(order.products_data)}")
+        print(f"🔍 DEBUG - Final products_data type after refresh: {type(order.products_data)}")
         
         # Add products to order
-        products = data.get('products', [])
-        for product_data in products:
+        received_products = data.get('products', [])
+        print(f"🔍 DEBUG - About to process {len(received_products)} products for OrderProduct creation")
+        
+        for product_data in received_products:
             try:
                 product_id = product_data.get('_id') or product_data.get('id')
                 product = Product.objects.get(id=product_id)
@@ -1217,7 +1227,9 @@ def create_order_api(request):
             'payment_method': payment_method,
             'success': True,
             'debug_products_count': len(products_data),
-            'saved_products_count': len(order.products_data)
+            'saved_products_count': len(order.products_data),
+            'debug_final_products': order.products_data,
+            'debug_received_products_count': len(received_products)
         })
         
     except Exception as e:
