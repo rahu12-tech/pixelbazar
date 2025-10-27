@@ -21,7 +21,7 @@ SECRET_KEY = env('SECRET_KEY', default='change-me-in-production')
 DEBUG = env.bool('DEBUG', default=True)
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
-print("✅ ALLOWED_HOSTS =>", ALLOWED_HOSTS)
+print("ALLOWED_HOSTS =>", ALLOWED_HOSTS)
 
 
 # ----------------------------------------
@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 # ----------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 👈 Static files ke liye
     'corsheaders.middleware.CorsMiddleware',  # 👈 sabse upar hona chahiye
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -181,11 +182,19 @@ RAZORPAY_KEY_SECRET = 'xWsf3X2gpLNpbmSBnjZljOle'
 # 1️⃣2️⃣ Static & Media Files
 # ----------------------------------------
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'    # for deployment
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Only add STATICFILES_DIRS if the directory exists
-if os.path.exists(BASE_DIR / 'static'):
-    STATICFILES_DIRS = [BASE_DIR / 'static']
+# WhiteNoise configuration for production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Create static directory if it doesn't exist
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
