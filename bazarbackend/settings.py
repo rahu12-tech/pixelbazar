@@ -151,6 +151,7 @@ USE_TZ = True
 
 AUTH_USER_MODEL = 'pixelbazar.User'
 
+APPEND_SLASH = False
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
