@@ -4,9 +4,9 @@ from .debug_views import debug_products
 
 urlpatterns = [
     # Auth APIs
-    path('signup', views.signup, name='signup'),
-    path('verify-otp', views.verify_otp, name='verify_otp'),
-    path('login', views.login, name='login'),
+    path('signup/', views.signup, name='signup'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('login/', views.login, name='login'),
     
     # User APIs
     path('user/profile/', views.get_user_profile, name='get_user_profile'),
@@ -88,5 +88,5 @@ urlpatterns = [
     path('contacts/', views.get_contacts, name='get_contacts'),
     
     # Simple Cart endpoint for frontend
-    path('cart', views.get_cart, name='simple_cart'),
+    path('cart/', views.get_cart, name='simple_cart'),
 ]
