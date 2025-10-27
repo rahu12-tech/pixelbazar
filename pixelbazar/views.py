@@ -443,7 +443,7 @@ def get_order_history(request):
         for order in orders:
             # Get products data - prioritize products_data JSON field
             products_list = []
-            if order.products_data:
+            if order.products_data and len(order.products_data) > 0:
                 products_list = order.products_data
             else:
                 # Fallback to OrderProduct relationship
@@ -1019,11 +1019,11 @@ def get_orders(request):
         for order in orders:
             # Get products data - prioritize products_data JSON field
             products_list = []
-            if order.products_data:
+            if order.products_data and len(order.products_data) > 0:
                 products_list = order.products_data
             else:
                 # Fallback to OrderProduct relationship
-                order_products = order.orderproduct_set.all()
+                order_products = OrderProduct.objects.filter(order=order)
                 for op in order_products:
                     product_data = {
                         '_id': str(op.product.id),
