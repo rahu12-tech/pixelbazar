@@ -1110,6 +1110,8 @@ def create_order_api(request):
         
         # Prepare complete product data for storage
         products_data = []
+        print(f"Processing {len(data.get('products', []))} products for order")
+        
         for product_data in data.get('products', []):
             try:
                 product_id = product_data.get('_id') or product_data.get('id')
@@ -1125,8 +1127,12 @@ def create_order_api(request):
                     'product_return': str(product.product_return)
                 }
                 products_data.append(complete_product_data)
+                print(f"Added product to products_data: {complete_product_data['product_name']}")
             except Product.DoesNotExist:
+                print(f"Product {product_id} not found")
                 continue
+        
+        print(f"Final products_data array: {products_data}")
         
         # Create order with address and customer details
         order = Order.objects.create(
@@ -1168,6 +1174,10 @@ def create_order_api(request):
         order.payment = payment
         order.save()
         
+        # Debug: Verify products_data was saved
+        print(f"Order {order.order_id} created with products_data: {order.products_data}")
+        print(f"Products_data length: {len(order.products_data)}")
+        
         # Add products to order
         products = data.get('products', [])
         for product_data in products:
@@ -1200,7 +1210,8 @@ def create_order_api(request):
             'message': 'Order created successfully',
             'order_id': order.order_id,
             'payment_method': payment_method,
-            'success': True
+            'success': True,
+            'debug_products_count': len(products_data)
         })
         
     except Exception as e:
