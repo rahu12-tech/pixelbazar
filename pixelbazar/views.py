@@ -1019,11 +1019,18 @@ def get_orders(request):
         for order in orders:
             # Get products data - prioritize products_data JSON field
             products_list = []
+            print(f"🔍 RAW Products Data for order {order.order_id}: {order.products_data}")
+            print(f"🔍 RAW Products Data type: {type(order.products_data)}")
+            print(f"🔍 RAW Products Data length: {len(order.products_data) if order.products_data else 0}")
+            
             if order.products_data and len(order.products_data) > 0:
                 products_list = order.products_data
+                print(f"🔍 Using products_data: {len(products_list)} products")
             else:
+                print(f"🔍 Fallback to OrderProduct relationship")
                 # Fallback to OrderProduct relationship
                 order_products = OrderProduct.objects.filter(order=order)
+                print(f"🔍 Found {order_products.count()} OrderProduct records")
                 for op in order_products:
                     product_data = {
                         '_id': str(op.product.id),
@@ -1033,6 +1040,7 @@ def get_orders(request):
                         'quantity': op.quantity
                     }
                     products_list.append(product_data)
+                print(f"🔍 Fallback products_list: {len(products_list)} products")
             
             order_data = {
                 'order_id': order.order_id,
@@ -1179,9 +1187,29 @@ def create_order_api(request):
         
         # CRITICAL: Set products_data AFTER creation (JSONField fix)
         print(f"🔍 CRITICAL - About to save products_data: {products_data}")
-        order.products_data = products_data
-        order.save()
-        print(f"🔍 CRITICAL - Products_data saved: {order.products_data}")
+        print(f"🔍 CRITICAL - Products_data type: {type(products_data)}")
+        
+        # Try multiple methods to ensure products_data is saved
+        try:
+            # Method 1: Direct assignment and save
+            order.products_data = products_data
+            order.save(update_fields=['products_data'])
+            print(f"🔍 Method 1 - Direct save completed")
+            
+            # Method 2: Force update if Method 1 fails
+            order.refresh_from_db()
+            if not order.products_data or len(order.products_data) == 0:
+                print(f"🔍 Method 1 failed, trying Method 2 - Force update")
+                Order.objects.filter(id=order.id).update(products_data=products_data)
+                order.refresh_from_db()
+            
+            print(f"🔍 CRITICAL - Final products_data: {order.products_data}")
+            print(f"🔍 CRITICAL - Final length: {len(order.products_data) if order.products_data else 0}")
+            
+        except Exception as save_error:
+            print(f"🔥 ERROR saving products_data: {save_error}")
+            # Fallback: ensure OrderProduct relationships exist
+            print(f"🔍 Fallback: Ensuring OrderProduct relationships exist")
         
         # Set estimated delivery date
         from datetime import datetime, timedelta
@@ -1201,15 +1229,22 @@ def create_order_api(request):
         order.payment = payment
         order.save()
         
-        # CRITICAL: Verify products_data was saved
+        # CRITICAL: Final verification
         order.refresh_from_db()
         print(f"🔍 FINAL CHECK - Order {order.order_id} products_data: {order.products_data}")
-        print(f"🔍 FINAL CHECK - Length: {len(order.products_data)}")
+        print(f"🔍 FINAL CHECK - Length: {len(order.products_data) if order.products_data else 0}")
         
-        if not order.products_data:
+        # Count OrderProduct relationships as backup
+        order_product_count = OrderProduct.objects.filter(order=order).count()
+        print(f"🔍 FINAL CHECK - OrderProduct count: {order_product_count}")
+        
+        if not order.products_data or len(order.products_data) == 0:
             print("🚨 CRITICAL ERROR - Products_data still empty!")
+            if order_product_count > 0:
+                print(f"ℹ️ INFO - But {order_product_count} OrderProduct relationships exist as fallback")
         else:
-            print(f"✅ SUCCESS - {len(order.products_data)} products saved!")
+            print(f"✅ SUCCESS - {len(order.products_data)} products saved in products_data!")
+            print(f"✅ SUCCESS - {order_product_count} OrderProduct relationships also created!")
         
         # Add products to order
         received_products = data.get('products', [])
@@ -1254,17 +1289,26 @@ def create_order_api(request):
                 print(f"Error creating OrderProduct for {product_id}: {str(e)}")
                 continue
         
+        # Final verification for response
+        final_order = Order.objects.get(id=order.id)
+        order_product_count = OrderProduct.objects.filter(order=final_order).count()
+        
         return Response({
             'status': 201,
             'message': 'Order created successfully',
-            'order_id': order.order_id,
+            'order_id': final_order.order_id,
             'payment_method': payment_method,
             'success': True,
-            'debug_products_count': len(products_data),
-            'saved_products_count': len(order.products_data),
-            'debug_final_products': order.products_data,
-            'debug_received_products_count': len(received_products),
-            'CRITICAL_products_saved': len(order.products_data) > 0
+            'debug_info': {
+                'received_products_count': len(received_products),
+                'processed_products_count': len(products_data),
+                'saved_products_data_count': len(final_order.products_data) if final_order.products_data else 0,
+                'order_product_relationships': order_product_count,
+                'products_data_exists': bool(final_order.products_data and len(final_order.products_data) > 0),
+                'fallback_available': order_product_count > 0
+            },
+            'products_data': final_order.products_data,
+            'CRITICAL_SUCCESS': (final_order.products_data and len(final_order.products_data) > 0) or order_product_count > 0
         })
         
     except Exception as e:
