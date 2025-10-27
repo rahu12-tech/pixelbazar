@@ -1156,7 +1156,7 @@ def create_order_api(request):
         print(f"🔍 DEBUG - Final products_data type: {type(products_data)}")
         print(f"🔍 DEBUG - Final products_data length: {len(products_data)}")
         
-        # Create order with address and customer details
+        # CRITICAL: Create order WITHOUT products_data (JSONField issue)
         order = Order.objects.create(
             user=request.user,
             shipping_address=address,
@@ -1177,12 +1177,11 @@ def create_order_api(request):
             payment_status='pending'
         )
         
-        # Save products_data separately to ensure it's saved
-        print(f"🔍 DEBUG - About to save products_data: {products_data}")
+        # CRITICAL: Set products_data AFTER creation (JSONField fix)
+        print(f"🔍 CRITICAL - About to save products_data: {products_data}")
         order.products_data = products_data
         order.save()
-        print(f"🔍 DEBUG - Products_data saved to order: {order.products_data}")
-        print(f"🔍 DEBUG - Saved products_data type: {type(order.products_data)}")
+        print(f"🔍 CRITICAL - Products_data saved: {order.products_data}")
         
         # Set estimated delivery date
         from datetime import datetime, timedelta
@@ -1202,11 +1201,15 @@ def create_order_api(request):
         order.payment = payment
         order.save()
         
-        # Debug: Final verification
+        # CRITICAL: Verify products_data was saved
         order.refresh_from_db()
-        print(f"🔍 DEBUG - Final verification - Order {order.order_id} products_data: {order.products_data}")
-        print(f"🔍 DEBUG - Final products_data length: {len(order.products_data)}")
-        print(f"🔍 DEBUG - Final products_data type after refresh: {type(order.products_data)}")
+        print(f"🔍 FINAL CHECK - Order {order.order_id} products_data: {order.products_data}")
+        print(f"🔍 FINAL CHECK - Length: {len(order.products_data)}")
+        
+        if not order.products_data:
+            print("🚨 CRITICAL ERROR - Products_data still empty!")
+        else:
+            print(f"✅ SUCCESS - {len(order.products_data)} products saved!")
         
         # Add products to order
         received_products = data.get('products', [])
@@ -1260,7 +1263,8 @@ def create_order_api(request):
             'debug_products_count': len(products_data),
             'saved_products_count': len(order.products_data),
             'debug_final_products': order.products_data,
-            'debug_received_products_count': len(received_products)
+            'debug_received_products_count': len(received_products),
+            'CRITICAL_products_saved': len(order.products_data) > 0
         })
         
     except Exception as e:
