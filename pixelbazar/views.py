@@ -1164,7 +1164,7 @@ def create_order_api(request):
         print(f"🔍 DEBUG - Final products_data type: {type(products_data)}")
         print(f"🔍 DEBUG - Final products_data length: {len(products_data)}")
         
-        # CRITICAL: Create order WITHOUT products_data (JSONField issue)
+        # Create order WITH products_data directly
         order = Order.objects.create(
             user=request.user,
             shipping_address=address,
@@ -1182,34 +1182,13 @@ def create_order_api(request):
             final_amount=final_amount,
             status='confirmed' if payment_method == 'COD' else 'pending',
             payment_method=payment_method,
-            payment_status='pending'
+            payment_status='pending',
+            products_data=products_data  # Direct assignment during creation
         )
         
-        # CRITICAL: Set products_data AFTER creation (JSONField fix)
-        print(f"🔍 CRITICAL - About to save products_data: {products_data}")
-        print(f"🔍 CRITICAL - Products_data type: {type(products_data)}")
-        
-        # Try multiple methods to ensure products_data is saved
-        try:
-            # Method 1: Direct assignment and save
-            order.products_data = products_data
-            order.save(update_fields=['products_data'])
-            print(f"🔍 Method 1 - Direct save completed")
-            
-            # Method 2: Force update if Method 1 fails
-            order.refresh_from_db()
-            if not order.products_data or len(order.products_data) == 0:
-                print(f"🔍 Method 1 failed, trying Method 2 - Force update")
-                Order.objects.filter(id=order.id).update(products_data=products_data)
-                order.refresh_from_db()
-            
-            print(f"🔍 CRITICAL - Final products_data: {order.products_data}")
-            print(f"🔍 CRITICAL - Final length: {len(order.products_data) if order.products_data else 0}")
-            
-        except Exception as save_error:
-            print(f"🔥 ERROR saving products_data: {save_error}")
-            # Fallback: ensure OrderProduct relationships exist
-            print(f"🔍 Fallback: Ensuring OrderProduct relationships exist")
+        # Verify products_data was saved during creation
+        print(f"🔍 VERIFICATION - Order created with products_data: {order.products_data}")
+        print(f"🔍 VERIFICATION - Products_data length: {len(order.products_data) if order.products_data else 0}")
         
         # Set estimated delivery date
         from datetime import datetime, timedelta
