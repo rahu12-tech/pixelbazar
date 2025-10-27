@@ -1147,7 +1147,6 @@ def create_order_api(request):
             city=data.get('city', ''),
             state=data.get('state', ''),
             pincode=data.get('pincode', ''),
-            products_data=products_data,  # Store complete product data
             totalAmount=total_amount,
             delivery_charges=delivery_charges,
             final_amount=final_amount,
@@ -1155,6 +1154,11 @@ def create_order_api(request):
             payment_method=payment_method,
             payment_status='pending'
         )
+        
+        # Save products_data separately to ensure it's saved
+        order.products_data = products_data
+        order.save()
+        print(f"Products_data saved to order: {order.products_data}")
         
         # Set estimated delivery date
         from datetime import datetime, timedelta
@@ -1174,9 +1178,10 @@ def create_order_api(request):
         order.payment = payment
         order.save()
         
-        # Debug: Verify products_data was saved
-        print(f"Order {order.order_id} created with products_data: {order.products_data}")
-        print(f"Products_data length: {len(order.products_data)}")
+        # Debug: Final verification
+        order.refresh_from_db()
+        print(f"Final verification - Order {order.order_id} products_data: {order.products_data}")
+        print(f"Final products_data length: {len(order.products_data)}")
         
         # Add products to order
         products = data.get('products', [])
@@ -1211,7 +1216,8 @@ def create_order_api(request):
             'order_id': order.order_id,
             'payment_method': payment_method,
             'success': True,
-            'debug_products_count': len(products_data)
+            'debug_products_count': len(products_data),
+            'saved_products_count': len(order.products_data)
         })
         
     except Exception as e:
