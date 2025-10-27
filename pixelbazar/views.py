@@ -1118,7 +1118,24 @@ def create_order_api(request):
         for product_data in data.get('products', []):
             try:
                 product_id = product_data.get('_id') or product_data.get('id')
-                product = Product.objects.get(id=product_id)
+                product_name = product_data.get('product_name', '')
+                
+                # Try to find product by ID first
+                try:
+                    product = Product.objects.get(id=product_id)
+                    print(f"Found product by ID {product_id}: {product.product_name}")
+                except Product.DoesNotExist:
+                    # Fallback: try to find by name
+                    if product_name:
+                        product = Product.objects.filter(product_name__icontains=product_name).first()
+                        if product:
+                            print(f"Found product by name '{product_name}': ID {product.id}")
+                        else:
+                            print(f"Product not found by name '{product_name}' either")
+                            continue
+                    else:
+                        print(f"Product {product_id} not found and no name provided")
+                        continue
                 
                 # Build complete product data
                 complete_product_data = {
@@ -1131,8 +1148,8 @@ def create_order_api(request):
                 }
                 products_data.append(complete_product_data)
                 print(f"Added product to products_data: {complete_product_data['product_name']}")
-            except Product.DoesNotExist:
-                print(f"Product {product_id} not found")
+            except Exception as e:
+                print(f"Error processing product {product_id}: {str(e)}")
                 continue
         
         print(f"🔍 DEBUG - Final products_data array: {products_data}")
@@ -1198,7 +1215,20 @@ def create_order_api(request):
         for product_data in received_products:
             try:
                 product_id = product_data.get('_id') or product_data.get('id')
-                product = Product.objects.get(id=product_id)
+                product_name = product_data.get('product_name', '')
+                
+                # Try to find product by ID first, then by name
+                try:
+                    product = Product.objects.get(id=product_id)
+                except Product.DoesNotExist:
+                    if product_name:
+                        product = Product.objects.filter(product_name__icontains=product_name).first()
+                        if not product:
+                            print(f"Product {product_id} ('{product_name}') not found for OrderProduct")
+                            continue
+                    else:
+                        print(f"Product {product_id} not found for OrderProduct")
+                        continue
                 
                 # Create OrderProduct
                 OrderProduct.objects.create(
@@ -1216,8 +1246,9 @@ def create_order_api(request):
                     product_img=product_data.get('product_img', ''),
                     quantity=product_data.get('quantity', 1)
                 )
-            except Product.DoesNotExist:
-                print(f"Product {product_id} not found")
+                print(f"Created OrderProduct and OrderItem for: {product.product_name}")
+            except Exception as e:
+                print(f"Error creating OrderProduct for {product_id}: {str(e)}")
                 continue
         
         return Response({
