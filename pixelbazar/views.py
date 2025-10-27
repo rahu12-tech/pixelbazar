@@ -55,25 +55,22 @@ def signup(request):
     email = request.data.get('email')
     password = request.data.get('password')
     location = request.data.get('location', {})
-    
+
     if not all([name, email, password]):
         return Response({'msg': 'All fields required'}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if User.objects.filter(email=email).exists():
         return Response({'msg': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Generate OTP
+
     otp_code = str(random.randint(100000, 999999))
-    
-    # Save OTP
     OTP.objects.filter(email=email).delete()  # Remove old OTPs
     OTP.objects.create(email=email, otp=otp_code)
-    
-    # Send OTP email (skip in development if email not configured)
-    if settings.DEBUG and not settings.EMAIL_HOST_USER:
-        # Development mode - return OTP in response
-        return Response({'msg': 'OTP sent', 'otp': otp_code})  # Only for development
-    
+
+    # Development mode: return OTP directly
+    if settings.DEBUG:
+        return Response({'msg': 'OTP sent', 'otp': otp_code})
+
+    # Production: send email
     try:
         send_mail(
             'Your OTP Code',
@@ -83,38 +80,38 @@ def signup(request):
             fail_silently=False,
         )
         return Response({'msg': 'OTP sent'})
-    except:
+    except Exception as e:
+        print("Email send error:", e)
         return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# OTP Verification API
 @api_view(['POST'])
 def verify_otp(request):
-    print("📩 Verify OTP Request:", request.data)
     email = request.data.get('email')
     otp_code = request.data.get('otp')
     password = request.data.get('password')
+    name = request.data.get('name', '')
     location = request.data.get('location', {})
-    
+
     try:
         otp_obj = OTP.objects.get(email=email, otp=otp_code)
-        if otp_obj.is_expired():
+
+        if otp_obj.is_expired():  # Make sure OTP model has is_expired method
             return Response({'msg': 'OTP expired'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Create user
         user = User.objects.create(
             username=email,
             email=email,
-            first_name=request.data.get('name', ''),
+            first_name=name,
             password=make_password(password),
             location_lat=location.get('lat'),
             location_lng=location.get('lng')
         )
-        
-        # Mark OTP as verified
+
         otp_obj.is_verified = True
         otp_obj.save()
-        
-        return Response({'msg': 'successfull'})
+
+        return Response({'msg': 'User created successfully'})
     except OTP.DoesNotExist:
         return Response({'msg': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
