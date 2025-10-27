@@ -78,37 +78,60 @@ class OrderProductSerializer(serializers.ModelSerializer):
         return obj.product.product_price * obj.quantity
 
 class OrderSerializer(serializers.ModelSerializer):
-    tracking = OrderTrackingSerializer(read_only=True)
-    payment = PaymentSerializer(read_only=True)
-    return_status = ReturnStatusSerializer(read_only=True)
-    shipping_address = AddressSerializer(read_only=True)
-    products_count = serializers.SerializerMethodField()
+    tracking = serializers.SerializerMethodField()
+    payment = serializers.SerializerMethodField()
+    products = serializers.SerializerMethodField()
+    total_amount = serializers.CharField(source='totalAmount')
+    paymentMethod = serializers.CharField(source='payment_method')
+    createdAt = serializers.DateTimeField(source='created_at')
     
     class Meta:
         model = Order
         fields = [
-            'id', 'order_id', 'totalAmount', 'delivery_charges', 'final_amount',
-            'status', 'created_at', 'tracking', 'payment', 'return_status',
-            'shipping_address', 'products_count'
+            'order_id', 'fname', 'lname', 'email', 'mobile', 'address', 'town',
+            'city', 'state', 'pincode', 'products', 'total_amount', 'final_amount',
+            'paymentMethod', 'payment', 'tracking', 'createdAt'
         ]
     
-    def get_products_count(self, obj):
-        return obj.orderproduct_set.count()
+    def get_products(self, obj):
+        # Return products_data if available, otherwise get from OrderProduct
+        if obj.products_data:
+            return obj.products_data
+        
+        # Fallback to OrderProduct relationship
+        order_products = obj.orderproduct_set.all()
+        products_list = []
+        for op in order_products:
+            product_data = {
+                '_id': str(op.product.id),
+                'product_name': op.product.product_name,
+                'product_price': op.product.product_price,
+                'product_img': self.context['request'].build_absolute_uri(op.product.product_img.url) if op.product.product_img else '',
+                'quantity': op.quantity,
+                'product_return': str(op.product.product_return)
+            }
+            products_list.append(product_data)
+        return products_list
+    
+    def get_tracking(self, obj):
+        if obj.tracking:
+            return {
+                'status': obj.tracking.status,
+                'updatedAt': obj.tracking.updatedAt.isoformat() if obj.tracking.updatedAt else None
+            }
+        return {'status': 'Order Placed', 'updatedAt': obj.created_at.isoformat()}
+    
+    def get_payment(self, obj):
+        return {
+            'method': obj.payment_method,
+            'status': obj.payment_status
+        }
 
-class OrderDetailSerializer(serializers.ModelSerializer):
-    tracking = OrderTrackingSerializer(read_only=True)
-    payment = PaymentSerializer(read_only=True)
+class OrderDetailSerializer(OrderSerializer):
     return_status = ReturnStatusSerializer(read_only=True)
-    shipping_address = AddressSerializer(read_only=True)
-    order_products = OrderProductSerializer(source='orderproduct_set', many=True, read_only=True)
     
-    class Meta:
-        model = Order
-        fields = [
-            'id', 'order_id', 'totalAmount', 'discount_amount', 'delivery_charges', 
-            'final_amount', 'status', 'created_at', 'updated_at', 'tracking', 
-            'payment', 'return_status', 'shipping_address', 'order_products'
-        ]
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ['return_status']
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:

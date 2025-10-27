@@ -1105,6 +1105,26 @@ def create_order_api(request):
         if payment_method == 'cash on delivery':
             payment_method = 'COD'
         
+        # Prepare complete product data for storage
+        products_data = []
+        for product_data in data.get('products', []):
+            try:
+                product_id = product_data.get('_id') or product_data.get('id')
+                product = Product.objects.get(id=product_id)
+                
+                # Build complete product data
+                complete_product_data = {
+                    '_id': str(product.id),
+                    'product_name': product.product_name,
+                    'product_price': product.product_price,
+                    'product_img': request.build_absolute_uri(product.product_img.url) if product.product_img else '',
+                    'quantity': product_data.get('quantity', 1),
+                    'product_return': str(product.product_return)
+                }
+                products_data.append(complete_product_data)
+            except Product.DoesNotExist:
+                continue
+        
         # Create order with address and customer details
         order = Order.objects.create(
             user=request.user,
@@ -1114,9 +1134,11 @@ def create_order_api(request):
             email=data.get('email', ''),
             mobile=data.get('mobile', ''),
             address=data.get('address', ''),
+            town=data.get('town', ''),
             city=data.get('city', ''),
             state=data.get('state', ''),
             pincode=data.get('pincode', ''),
+            products_data=products_data,  # Store complete product data
             totalAmount=total_amount,
             delivery_charges=delivery_charges,
             final_amount=final_amount,

@@ -213,9 +213,13 @@ class Order(models.Model):
     email = models.EmailField(blank=True, null=True)
     mobile = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    town = models.CharField(max_length=100, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
+    
+    # Store complete product data as JSON
+    products_data = models.JSONField(default=list, blank=True)
     
     totalAmount = models.FloatField(default=0.0)
     discount_amount = models.FloatField(default=0.0)
