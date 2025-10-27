@@ -89,6 +89,7 @@ def signup(request):
 # OTP Verification API
 @api_view(['POST'])
 def verify_otp(request):
+    print("📩 Verify OTP Request:", request.data)
     email = request.data.get('email')
     otp_code = request.data.get('otp')
     password = request.data.get('password')
