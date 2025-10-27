@@ -81,8 +81,8 @@ class OrderSerializer(serializers.ModelSerializer):
     tracking = serializers.SerializerMethodField()
     payment = serializers.SerializerMethodField()
     products = serializers.SerializerMethodField()
-    total_amount = serializers.CharField(source='totalAmount')
-    paymentMethod = serializers.CharField(source='payment_method')
+    total_amount = serializers.SerializerMethodField()
+    paymentMethod = serializers.SerializerMethodField()
     createdAt = serializers.DateTimeField(source='created_at')
     
     class Meta:
@@ -92,6 +92,12 @@ class OrderSerializer(serializers.ModelSerializer):
             'city', 'state', 'pincode', 'products', 'total_amount', 'final_amount',
             'paymentMethod', 'payment', 'tracking', 'createdAt'
         ]
+    
+    def get_total_amount(self, obj):
+        return obj.totalAmount or 0
+    
+    def get_paymentMethod(self, obj):
+        return obj.payment_method or 'COD'
     
     def get_products(self, obj):
         # Return products_data if available, otherwise get from OrderProduct
@@ -117,14 +123,14 @@ class OrderSerializer(serializers.ModelSerializer):
         if obj.tracking:
             return {
                 'status': obj.tracking.status,
-                'updatedAt': obj.tracking.updatedAt.isoformat() if obj.tracking.updatedAt else None
+                'updatedAt': obj.tracking.updatedAt.isoformat() if obj.tracking.updatedAt else obj.created_at.isoformat()
             }
         return {'status': 'Order Placed', 'updatedAt': obj.created_at.isoformat()}
     
     def get_payment(self, obj):
         return {
-            'method': obj.payment_method,
-            'status': obj.payment_status
+            'method': obj.payment_method or 'COD',
+            'status': obj.payment_status or 'pending'
         }
 
 class OrderDetailSerializer(OrderSerializer):

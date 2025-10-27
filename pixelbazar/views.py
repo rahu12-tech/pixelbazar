@@ -441,68 +441,53 @@ def get_order_history(request):
         order_data = []
         
         for order in orders:
-            # Get order products
-            order_products = OrderProduct.objects.filter(order=order)
+            # Get products data - prioritize products_data JSON field
             products_list = []
-            
-            for op in order_products:
-                # Ensure proper image URL
-                image_url = None
-                if op.product.product_img:
-                    try:
-                        image_url = request.build_absolute_uri(op.product.product_img.url)
-                    except:
-                        image_url = None
-                
-                products_list.append({
-                    'id': op.product.id,
-                    'name': op.product.product_name,
-                    'title': op.product.product_titel,
-                    'price': op.product.product_price,
-                    'image': image_url,
-                    'quantity': op.quantity,
-                    'total': op.product.product_price * op.quantity
-                })
-            
-            # Calculate expected delivery date if not set
-            expected_delivery = order.tracking.estimated_delivery
-            if not expected_delivery and order.tracking.status not in ['Delivered', 'Cancelled']:
-                from datetime import datetime, timedelta
-                expected_delivery = order.created_at + timedelta(days=5)
-            
-            # Dynamic payment status based on method
-            payment_status = 'pending'
-            if order.payment:
-                if order.payment.method == 'cod':
-                    payment_status = 'pending' if order.tracking.status != 'Delivered' else 'paid'
-                elif order.payment.method == 'razorpay':
-                    payment_status = order.payment.status
-            
-            # Get products from OrderItem if available, otherwise from OrderProduct
-            order_items = order.order_items.all()
-            if order_items.exists():
-                products_list = []
-                for item in order_items:
+            if order.products_data:
+                products_list = order.products_data
+            else:
+                # Fallback to OrderProduct relationship
+                order_products = OrderProduct.objects.filter(order=order)
+                for op in order_products:
+                    image_url = None
+                    if op.product.product_img:
+                        try:
+                            image_url = request.build_absolute_uri(op.product.product_img.url)
+                        except:
+                            image_url = None
+                    
                     products_list.append({
-                        '_id': item.product_id,
-                        'product_name': item.product_name,
-                        'product_price': float(item.product_price),
-                        'product_img': item.product_img,
-                        'quantity': item.quantity
+                        '_id': str(op.product.id),
+                        'product_name': op.product.product_name,
+                        'product_price': op.product.product_price,
+                        'product_img': image_url,
+                        'quantity': op.quantity
                     })
             
             order_info = {
-                '_id': str(order.id),
                 'order_id': order.order_id,
-                'paymentMethod': order.payment_method.upper(),
+                'total_amount': order.totalAmount or 0,
+                'final_amount': order.final_amount or 0,
+                'fname': order.fname or '',
+                'lname': order.lname or '',
+                'email': order.email or '',
+                'mobile': order.mobile or '',
+                'address': order.address or '',
+                'town': order.town or '',
+                'city': order.city or '',
+                'state': order.state or '',
+                'pincode': order.pincode or '',
+                'paymentMethod': order.payment_method or 'COD',
                 'payment': {
-                    'method': order.payment_method.upper(),
-                    'status': order.payment_status
+                    'method': order.payment_method or 'COD',
+                    'status': order.payment_status or 'pending'
                 },
-                'totalAmount': order.totalAmount,
-                'final_amount': order.final_amount,
-                'products': products_list,
-                'createdAt': order.created_at.isoformat()
+                'tracking': {
+                    'status': order.tracking.status if order.tracking else 'Order Placed',
+                    'updatedAt': order.tracking.updatedAt.isoformat() if order.tracking and order.tracking.updatedAt else order.created_at.isoformat()
+                },
+                'createdAt': order.created_at.isoformat(),
+                'products': products_list
             }
             order_data.append(order_info)
         
@@ -1028,33 +1013,51 @@ def clear_cart(request):
 @permission_classes([IsAuthenticated])
 def get_orders(request):
     try:
-        orders = Order.objects.filter(user=request.user).prefetch_related('order_items').order_by('-created_at')
+        orders = Order.objects.filter(user=request.user).order_by('-created_at')
         
         orders_data = []
         for order in orders:
-            order_data = {
-                '_id': order.id,
-                'order_id': order.order_id,
-                'fname': order.fname,
-                'lname': order.lname,
-                'paymentMethod': order.payment_method,
-                'payment': {
-                    'method': order.payment_method,
-                    'status': order.payment_status
-                },
-                'totalAmount': float(order.totalAmount),
-                'final_amount': float(order.final_amount),
-                'createdAt': order.created_at.isoformat(),
-                'products': [
-                    {
-                        '_id': item.product_id,
-                        'product_name': item.product_name,
-                        'product_price': float(item.product_price),
-                        'product_img': item.product_img,
-                        'quantity': item.quantity
+            # Get products data - prioritize products_data JSON field
+            products_list = []
+            if order.products_data:
+                products_list = order.products_data
+            else:
+                # Fallback to OrderProduct relationship
+                order_products = order.orderproduct_set.all()
+                for op in order_products:
+                    product_data = {
+                        '_id': str(op.product.id),
+                        'product_name': op.product.product_name,
+                        'product_price': op.product.product_price,
+                        'product_img': request.build_absolute_uri(op.product.product_img.url) if op.product.product_img else '',
+                        'quantity': op.quantity
                     }
-                    for item in order.order_items.all()
-                ]
+                    products_list.append(product_data)
+            
+            order_data = {
+                'order_id': order.order_id,
+                'total_amount': order.totalAmount or 0,
+                'final_amount': order.final_amount or 0,
+                'fname': order.fname or '',
+                'lname': order.lname or '',
+                'email': order.email or '',
+                'mobile': order.mobile or '',
+                'address': order.address or '',
+                'town': order.town or '',
+                'city': order.city or '',
+                'state': order.state or '',
+                'pincode': order.pincode or '',
+                'paymentMethod': order.payment_method or 'COD',
+                'payment': {
+                    'method': order.payment_method or 'COD',
+                    'status': order.payment_status or 'pending'
+                },
+                'tracking': {
+                    'status': order.tracking.status if order.tracking else 'Order Placed',
+                    'updatedAt': order.tracking.updatedAt.isoformat() if order.tracking and order.tracking.updatedAt else order.created_at.isoformat()
+                },
+                'createdAt': order.created_at.isoformat(),
+                'products': products_list
             }
             orders_data.append(order_data)
         
