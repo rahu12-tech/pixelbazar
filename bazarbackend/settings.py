@@ -157,8 +157,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = env('EMAIL_USER', default='')       # .env me rakho
-EMAIL_HOST_PASSWORD = env('EMAIL_PASSWORD', default='')   # Gmail app password
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')       # .env me rakho
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')   # Gmail app password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'noreply@example.com'
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
 
