@@ -181,8 +181,11 @@ RAZORPAY_KEY_SECRET = 'xWsf3X2gpLNpbmSBnjZljOle'
 # 1️⃣2️⃣ Static & Media Files
 # ----------------------------------------
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # dev only
 STATIC_ROOT = BASE_DIR / 'staticfiles'    # for deployment
+
+# Only add STATICFILES_DIRS if the directory exists
+if os.path.exists(BASE_DIR / 'static'):
+    STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

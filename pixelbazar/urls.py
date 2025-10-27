@@ -54,8 +54,7 @@ urlpatterns = [
     # Legacy endpoints for backward compatibility
     path('addtocart', views.legacy_add_to_cart, name='legacy_add_to_cart'),
     
-    # New Cart APIs for frontend
-    path('cart/add/', views.cart_add_api, name='cart_add_api'),
+    # Additional Cart APIs
     path('cart/update/', views.cart_update_api, name='cart_update_api'),
     path('cart/remove/', views.cart_remove_api, name='cart_remove_api'),
     path('cart/clear/', views.clear_cart, name='clear_cart'),
@@ -87,4 +86,7 @@ urlpatterns = [
     # Contact APIs
     path('contact/', views.submit_contact, name='submit_contact'),
     path('contacts/', views.get_contacts, name='get_contacts'),
+    
+    # Simple Cart endpoint for frontend
+    path('cart', views.get_cart, name='simple_cart'),
 ]
