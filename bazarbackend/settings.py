@@ -155,7 +155,7 @@ AUTH_USER_MODEL = 'pixelbazar.User'
 APPEND_SLASH = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp-relay.brevo.com'
 EMAIL_PORT = int(env('EMAIL_PORT', default=587))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')       # .env me rakho
