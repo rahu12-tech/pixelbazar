@@ -19,6 +19,8 @@ def send_email_via_brevo(to_email, subject, content):
     
     try:
         response = requests.post(url, headers=headers, json=data)
+        print("BREVO RESPONSE STATUS:", response.status_code)
+        print("BREVO RESPONSE TEXT:", response.text)
         return response.status_code == 201, response.text
     except Exception as e:
         return False, str(e)
