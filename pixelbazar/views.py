@@ -277,32 +277,68 @@ def remove_from_cart(request, cart_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_wishlist(request):
-    wishlist_items = Wishlist.objects.filter(user=request.user)
-    serializer = WishlistSerializer(wishlist_items, many=True, context={'request': request})
-    return Response(serializer.data)
+    try:
+        wishlist_items = Wishlist.objects.filter(user=request.user)
+        wishlist_data = []
+        
+        for item in wishlist_items:
+            wishlist_data.append({
+                'id': item.id,
+                'product_id': item.product.id,
+                'product': {
+                    'id': item.product.id,
+                    'product_name': item.product.product_name,
+                    'product_price': item.product.product_price,
+                    'product_oldPrice': item.product.product_oldPrice,
+                    'product_img': request.build_absolute_uri(item.product.product_img.url) if item.product.product_img else None,
+                    'product_brand': item.product.product_brand,
+                    'product_type': item.product.product_type
+                },
+                'added_at': item.added_at
+            })
+        
+        return Response({'data': wishlist_data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_to_wishlist(request):
-    product_id = request.data.get('product_id')
-    product = get_object_or_404(Product, id=product_id)
-    
-    wishlist_item, created = Wishlist.objects.get_or_create(
-        user=request.user, 
-        product=product
-    )
-    
-    if created:
-        return Response({'message': 'Product added to wishlist'}, status=status.HTTP_201_CREATED)
-    else:
-        return Response({'message': 'Product already in wishlist'})
+    try:
+        product_id = request.data.get('product_id')
+        product = get_object_or_404(Product, id=product_id)
+        
+        wishlist_item, created = Wishlist.objects.get_or_create(
+            user=request.user,
+            product=product
+        )
+        
+        if created:
+            return Response({
+                'status': 200,
+                'message': 'Product added to wishlist successfully'
+            })
+        else:
+            return Response({
+                'status': 200,
+                'message': 'Product already in wishlist'
+            })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def remove_from_wishlist(request, wishlist_id):
-    wishlist_item = get_object_or_404(Wishlist, id=wishlist_id, user=request.user)
-    wishlist_item.delete()
-    return Response({'message': 'Item removed from wishlist'})
+    try:
+        wishlist_item = get_object_or_404(Wishlist, id=wishlist_id, user=request.user)
+        wishlist_item.delete()
+        
+        return Response({
+            'status': 200,
+            'message': 'Product removed from wishlist'
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 # Address APIs
 @api_view(['GET'])

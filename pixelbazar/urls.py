@@ -29,6 +29,9 @@ urlpatterns = [
     path('wishlist/', views.get_wishlist, name='get_wishlist'),
     path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/<int:wishlist_id>/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('api/wishlist/', views.get_wishlist, name='api_get_wishlist'),
+    path('api/wishlist/add/', views.add_to_wishlist, name='api_add_to_wishlist'),
+    path('api/wishlist/<int:wishlist_id>/remove/', views.remove_from_wishlist, name='api_remove_from_wishlist'),
     
     # Address APIs
     path('addresses/', views.get_addresses, name='get_addresses'),
