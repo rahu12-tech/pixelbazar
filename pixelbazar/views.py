@@ -1039,11 +1039,18 @@ def get_orders(request):
                 order_products = OrderProduct.objects.filter(order=order)
                 print(f"🔍 Found {order_products.count()} OrderProduct records")
                 for op in order_products:
+                    image_url = None
+                    if op.product.product_img:
+                        try:
+                            image_url = request.build_absolute_uri(op.product.product_img.url)
+                        except:
+                            image_url = None
+                    
                     product_data = {
                         '_id': str(op.product.id),
                         'product_name': op.product.product_name,
                         'product_price': op.product.product_price,
-                        'product_img': request.build_absolute_uri(op.product.product_img.url) if op.product.product_img else '',
+                        'product_img': image_url,
                         'quantity': op.quantity
                     }
                     products_list.append(product_data)
