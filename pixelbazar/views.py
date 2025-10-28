@@ -29,8 +29,54 @@ def get_razorpay_client():
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_profile(request):
-    serializer = UserSerializer(request.user, context={'request': request})
-    return Response(serializer.data)
+    try:
+        user = request.user
+        user_data = {
+            'id': user.id,
+            'email': user.email,
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'number': user.number,
+            'gender': user.gender,
+            'profilePic': request.build_absolute_uri(user.profilePic.url) if user.profilePic else None
+        }
+        return Response({'user': user_data})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+# Update User Profile API  
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_user_profile(request):
+    try:
+        user = request.user
+        
+        # Update fields
+        if 'first_name' in request.data:
+            user.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            user.last_name = request.data['last_name']
+        if 'number' in request.data:
+            user.number = request.data['number']
+        if 'gender' in request.data:
+            user.gender = request.data['gender']
+            
+        user.save()
+        
+        return Response({
+            'msg': 'Profile updated successfully',
+            'user': {
+                'id': user.id,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'number': user.number,
+                'gender': user.gender,
+                'email': user.email
+            }
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 # Token Refresh API
 @api_view(['POST'])

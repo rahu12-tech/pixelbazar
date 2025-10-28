@@ -10,6 +10,8 @@ urlpatterns = [
     
     # User APIs
     path('user/profile/', views.get_user_profile, name='get_user_profile'),
+    path('profile/', views.get_user_profile, name='get_profile'),
+    path('profile/update/', views.update_user_profile, name='update_profile'),
     path('auth/refresh/', views.refresh_token, name='refresh_token'),
     
     # Product APIs
