@@ -4,6 +4,7 @@ from django.conf import settings
 
 def send_email_via_brevo(to_email, subject, content):
     """Send email using Brevo API instead of SMTP"""
+    print("OTP FUNCTION CALLED")
     url = "https://api.brevo.com/v3/smtp/email"
     headers = {
         "accept": "application/json",
