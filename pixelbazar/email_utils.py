@@ -1,5 +1,6 @@
 import requests
 import os
+import sys
 from django.conf import settings
 
 def send_email_via_brevo(to_email, subject, content):
@@ -22,6 +23,7 @@ def send_email_via_brevo(to_email, subject, content):
         response = requests.post(url, headers=headers, json=data)
         print("BREVO RESPONSE STATUS:", response.status_code)
         print("BREVO RESPONSE TEXT:", response.text)
+        sys.stdout.flush()
         return response.status_code == 201, response.text
     except Exception as e:
         return False, str(e)
