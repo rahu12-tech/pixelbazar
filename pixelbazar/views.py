@@ -67,11 +67,11 @@ def signup(request):
     OTP.objects.filter(email=email).delete()  # Remove old OTPs
     OTP.objects.create(email=email, otp=otp_code)
 
-    # Development mode: return OTP directly
-    if settings.DEBUG:
-        return Response({'msg': 'OTP sent', 'otp': otp_code})
-
-    # Production: send email via Brevo API
+    # Always send email in production, but also return OTP in debug mode
+    import sys
+    print("SIGNUP VIEW CALLED - Sending OTP...")
+    sys.stdout.flush()
+    
     try:
         success, response = send_email_via_brevo(
             email,
@@ -79,7 +79,11 @@ def signup(request):
             f'Your OTP code is: {otp_code}'
         )
         if success:
-            return Response({'msg': 'OTP sent'})
+            # In debug mode, also return the OTP for testing
+            if settings.DEBUG:
+                return Response({'msg': 'OTP sent', 'otp': otp_code})
+            else:
+                return Response({'msg': 'OTP sent'})
         else:
             print("Brevo email error:", response)
             return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
