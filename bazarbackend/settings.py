@@ -69,6 +69,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # Local testing ke liye ✅
 # 👇 Optional: sirf frontend port allow karna ho
 CORS_ALLOWED_ORIGINS = [
     "https://pixelbazarfrontend.onrender.com",
+    "https://pixelbazar-backend.onrender.com",
     "http://localhost:5173",  # 👈 Vite frontend port
     "http://127.0.0.1:5173",
 ]
