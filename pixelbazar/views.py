@@ -105,14 +105,16 @@ def verify_otp(request):
         if otp_obj.is_expired():  # Make sure OTP model has is_expired method
             return Response({'msg': 'OTP expired'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create user
-        user = User.objects.create(
-            username=email,
+        # Create user (prevent duplicates)
+        user, created = User.objects.get_or_create(
             email=email,
-            first_name=name,
-            password=make_password(password),
-            location_lat=location.get('lat'),
-            location_lng=location.get('lng')
+            defaults={
+                'username': email,
+                'first_name': name,
+                'password': make_password(password),
+                'location_lat': location.get('lat'),
+                'location_lng': location.get('lng')
+            }
         )
 
         otp_obj.is_verified = True
