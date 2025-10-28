@@ -16,6 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password, check_password
 import random
 from django.core.mail import send_mail
+from .email_utils import send_email_via_brevo
 
 # Razorpay client - initialize only when needed
 def get_razorpay_client():
@@ -70,16 +71,18 @@ def signup(request):
     if settings.DEBUG:
         return Response({'msg': 'OTP sent', 'otp': otp_code})
 
-    # Production: send email
+    # Production: send email via Brevo API
     try:
-        send_mail(
+        success, response = send_email_via_brevo(
+            email,
             'Your OTP Code',
-            f'Your OTP code is: {otp_code}',
-            settings.EMAIL_HOST_USER,
-            [email],
-            fail_silently=False,
+            f'Your OTP code is: {otp_code}'
         )
-        return Response({'msg': 'OTP sent'})
+        if success:
+            return Response({'msg': 'OTP sent'})
+        else:
+            print("Brevo email error:", response)
+            return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         print("Email send error:", e)
         return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
