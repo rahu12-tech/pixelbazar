@@ -13,7 +13,7 @@ def send_email_via_brevo(to_email, subject, content):
         "content-type": "application/json",
     }
     data = {
-        "sender": {"name": "PixelBazar", "email": "9a3106001@smtp-brevo.com"},
+        "sender": {"name": "PixelBazar", "email": "jakhar365365@gmail.com"},
         "to": [{"email": to_email}],
         "subject": subject,
         "htmlContent": f"<p>{content}</p>",
