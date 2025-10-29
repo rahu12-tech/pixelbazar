@@ -78,6 +78,7 @@ urlpatterns = [
     
     # Coupon & Gift Card APIs
     path('coupons/', views.get_coupons, name='get_coupons'),
+    path('coupons/apply/', views.apply_coupon, name='apply_coupon'),
     path('gift-cards/', views.get_gift_cards, name='get_gift_cards'),
     
     # Music Banner & Category APIs

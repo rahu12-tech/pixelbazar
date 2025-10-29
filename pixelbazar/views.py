@@ -1688,6 +1688,67 @@ def get_coupons(request):
         })
     return Response({'coupons': coupon_data})
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def apply_coupon(request):
+    try:
+        coupon_code = request.data.get('code')
+        cart_total = float(request.data.get('cartTotal', 0))
+        
+        if not coupon_code:
+            return Response({
+                'success': False,
+                'message': 'Coupon code is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Find coupon
+        from django.utils import timezone
+        try:
+            coupon = Coupon.objects.get(
+                code=coupon_code,
+                is_active=True,
+                valid_till__gte=timezone.now()
+            )
+        except Coupon.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid or expired coupon code'
+            })
+        
+        # Check minimum amount
+        if cart_total < float(coupon.min_amount):
+            return Response({
+                'success': False,
+                'message': f'Minimum order amount should be ₹{coupon.min_amount}'
+            })
+        
+        # Calculate discount
+        discount_amount = (cart_total * coupon.discount) / 100
+        
+        # Apply max discount limit
+        if discount_amount > float(coupon.max_discount):
+            discount_amount = float(coupon.max_discount)
+        
+        final_amount = cart_total - discount_amount
+        
+        return Response({
+            'success': True,
+            'message': 'Coupon applied successfully',
+            'coupon': {
+                'code': coupon.code,
+                'title': coupon.title,
+                'discount': coupon.discount
+            },
+            'discount_amount': round(discount_amount, 2),
+            'final_amount': round(final_amount, 2)
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_gift_cards(request):
