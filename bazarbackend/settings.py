@@ -109,7 +109,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'pixelbazar_db'),
         'USER': os.environ.get('DB_USER', 'rahul'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'your_password'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'zo6XmiFZcLMmkAyU3A3JMgFAN1ZfNOF3'),
         'HOST': os.environ.get('DB_HOST', 'dpg-d40phsfgi27c73ct0p50-a'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
