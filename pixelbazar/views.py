@@ -1695,6 +1695,9 @@ def apply_coupon(request):
         coupon_code = request.data.get('code')
         cart_total = float(request.data.get('cartTotal', 0))
         
+        print(f"🔍 DEBUG - Coupon Code: {coupon_code}")
+        print(f"🔍 DEBUG - Cart Total: {cart_total}")
+        
         if not coupon_code:
             return Response({
                 'success': False,
@@ -1709,6 +1712,10 @@ def apply_coupon(request):
                 is_active=True,
                 valid_till__gte=timezone.now()
             )
+            print(f"🔍 DEBUG - Found Coupon: {coupon.code}")
+            print(f"🔍 DEBUG - Discount Percentage: {coupon.discount}%")
+            print(f"🔍 DEBUG - Min Amount: ₹{coupon.min_amount}")
+            print(f"🔍 DEBUG - Max Discount: ₹{coupon.max_discount}")
         except Coupon.DoesNotExist:
             return Response({
                 'success': False,
@@ -1722,14 +1729,27 @@ def apply_coupon(request):
                 'message': f'Minimum order amount should be ₹{coupon.min_amount}'
             })
         
-        # Calculate discount
-        discount_amount = (cart_total * coupon.discount) / 100
+        # Calculate discount - FIXED CALCULATION
+        discount_percentage = int(coupon.discount)  # Ensure it's integer
+        discount_amount = (cart_total * discount_percentage) / 100
+        
+        print(f"🔍 DEBUG - Discount Calculation:")
+        print(f"   Cart Total: ₹{cart_total}")
+        print(f"   Discount %: {discount_percentage}%")
+        print(f"   Calculated Discount: ₹{discount_amount}")
+        print(f"   Max Discount Limit: ₹{coupon.max_discount}")
         
         # Apply max discount limit
         if discount_amount > float(coupon.max_discount):
             discount_amount = float(coupon.max_discount)
+            print(f"   Applied Max Limit: ₹{discount_amount}")
         
         final_amount = cart_total - discount_amount
+        
+        print(f"🔍 DEBUG - Final Calculation:")
+        print(f"   Original: ₹{cart_total}")
+        print(f"   Discount: ₹{discount_amount}")
+        print(f"   Final: ₹{final_amount}")
         
         return Response({
             'success': True,
@@ -1740,10 +1760,17 @@ def apply_coupon(request):
                 'discount': coupon.discount
             },
             'discount_amount': round(discount_amount, 2),
-            'final_amount': round(final_amount, 2)
+            'final_amount': round(final_amount, 2),
+            'debug': {
+                'cart_total': cart_total,
+                'discount_percentage': discount_percentage,
+                'calculated_discount': round(discount_amount, 2),
+                'max_discount_limit': float(coupon.max_discount)
+            }
         })
         
     except Exception as e:
+        print(f"🚨 ERROR in apply_coupon: {str(e)}")
         return Response({
             'success': False,
             'message': str(e)
