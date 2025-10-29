@@ -104,19 +104,19 @@ WSGI_APPLICATION = 'bazarbackend.wsgi.application'
 # ----------------------------------------
 # 8️⃣ Database Setup
 # ----------------------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'pixelbazar_db'),
-        'USER': os.environ.get('DB_USER', 'rahul'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'zo6XmiFZcLMmkAyU3A3JMgFAN1ZfNOF3'),
-        'HOST': os.environ.get('DB_HOST', 'dpg-d40phsfgi27c73ct0p50-a'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+# Database configuration
+if os.environ.get('DATABASE_URL'):  # Production (Render)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'pixelbazar_db'),
+            'USER': os.environ.get('DB_USER', 'rahul'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
     }
-}
-
-# Fallback to SQLite for local development
-if DEBUG and not os.environ.get('DB_NAME'):
+else:  # Local development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
