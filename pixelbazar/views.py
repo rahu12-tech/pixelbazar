@@ -107,7 +107,7 @@ def signup(request):
         return Response({'msg': 'All fields required'}, status=status.HTTP_400_BAD_REQUEST)
 
     if User.objects.filter(email=email).exists():
-        return Response({'msg': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'msg': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
     otp_code = str(random.randint(100000, 999999))
     OTP.objects.filter(email=email).delete()  # Remove old OTPs

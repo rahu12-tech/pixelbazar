@@ -105,8 +105,24 @@ WSGI_APPLICATION = 'bazarbackend.wsgi.application'
 # 8️⃣ Database Setup
 # ----------------------------------------
 DATABASES = {
-    'default': env.db(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'pixelbazar_db'),
+        'USER': os.environ.get('DB_USER', 'rahul'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'your_password'),
+        'HOST': os.environ.get('DB_HOST', 'dpg-d40phsfgi27c73ct0p50-a'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+    }
 }
+
+# Fallback to SQLite for local development
+if DEBUG and not os.environ.get('DB_NAME'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # ----------------------------------------
 # 9️⃣ Password Validators
