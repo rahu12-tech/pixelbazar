@@ -151,7 +151,8 @@ class ReturnStatus(models.Model):
 
 # Default function for OrderTracking
 def default_tracking():
-    return None
+    tracking = OrderTracking.objects.create()
+    return tracking.id
 
 # Payment Model
 class Payment(models.Model):
@@ -225,7 +226,7 @@ class Order(models.Model):
     delivery_charges = models.FloatField(default=0.0)
     final_amount = models.FloatField(default=0.0)
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE, null=True, blank=True)
-    tracking = models.OneToOneField(OrderTracking, on_delete=models.CASCADE, null=True, blank=True)
+    tracking = models.OneToOneField(OrderTracking, on_delete=models.CASCADE, default=default_tracking)
     return_status = models.OneToOneField(ReturnStatus, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUS, default='pending')
     
