@@ -615,13 +615,13 @@ def get_order_history(request):
                 'products': products_list,
                 'return_requests': [
                     {
-                        'return_id': req.return_id,
-                        'status': req.status,
-                        'reason': req.reason,
-                        'refund_amount': req.refund_amount,
-                        'created_at': req.created_at.isoformat()
-                    } for req in order.return_requests.all()
-                ] if hasattr(order, 'return_requests') else []
+                        'return_id': order.return_status.return_id,
+                        'status': order.return_status.status,
+                        'reason': order.return_status.reason,
+                        'refund_amount': order.return_status.refund_amount,
+                        'created_at': order.return_status.updatedAt.isoformat()
+                    }
+                ] if order.return_status else []
             }
             order_data.append(order_info)
         
@@ -1401,13 +1401,13 @@ def get_orders(request):
                 'products': products_list,
                 'return_requests': [
                     {
-                        'return_id': req.return_id,
-                        'status': req.status,
-                        'reason': req.reason,
-                        'refund_amount': req.refund_amount,
-                        'created_at': req.created_at.isoformat()
-                    } for req in order.return_requests.all()
-                ] if hasattr(order, 'return_requests') else []
+                        'return_id': order.return_status.return_id,
+                        'status': order.return_status.status,
+                        'reason': order.return_status.reason,
+                        'refund_amount': order.return_status.refund_amount,
+                        'created_at': order.return_status.updatedAt.isoformat()
+                    }
+                ] if order.return_status else []
             }
             orders_data.append(order_data)
         
