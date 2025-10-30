@@ -52,9 +52,12 @@ urlpatterns = [
     path('orders/<str:order_id>/invoice/', views.download_invoice, name='download_invoice'),
     path('orders/<str:order_id>/success/', views.get_payment_success_details, name='get_payment_success_details'),
     
-    # Return & Refund APIs
+    # Enhanced Return & Refund APIs
     path('orders/<str:order_id>/return/', views.request_return, name='request_return'),
     path('returns/<str:return_id>/status/', views.get_return_status, name='get_return_status'),
+    path('returns/', views.get_user_returns, name='get_user_returns'),
+    path('user/delivery-status/', views.get_user_delivery_status, name='get_user_delivery_status'),
+    path('calculate-delivery/', views.calculate_delivery_charges, name='calculate_delivery_charges'),
     
     # Legacy endpoints for backward compatibility
     path('addtocart', views.legacy_add_to_cart, name='legacy_add_to_cart'),

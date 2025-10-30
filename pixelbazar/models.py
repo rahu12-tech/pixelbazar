@@ -36,6 +36,9 @@ class Product(models.Model):
     product_des = models.TextField()
     product_img = models.ImageField(upload_to='products/')
     product_return = models.IntegerField(default=0)
+    return_policy_days = models.IntegerField(default=7)  # Return policy in days
+    is_returnable = models.BooleanField(default=True)
+    return_policy_text = models.TextField(null=True, blank=True)
     product_IsStock = models.OneToOneField(ProductStock, on_delete=models.CASCADE, related_name='product', null=True, blank=True)
     location_lat = models.FloatField(null=True, blank=True)
     location_lng = models.FloatField(null=True, blank=True)
@@ -55,6 +58,8 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, default="user")  # admin/user
     location_lat = models.FloatField(null=True, blank=True)
     location_lng = models.FloatField(null=True, blank=True)
+    account_created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    free_delivery_days_left = models.IntegerField(default=2)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -127,7 +132,70 @@ class OrderTracking(models.Model):
             self.tracking_id = f"TRK{random.randint(100000, 999999)}"
         super().save(*args, **kwargs)
 
-# Return/Refund Status
+# Enhanced Return Management System
+class ReturnRequest(models.Model):
+    RETURN_REASONS = [
+        ('defective', 'Defective Product'),
+        ('wrong_item', 'Wrong Item Delivered'),
+        ('not_as_described', 'Not as Described'),
+        ('damaged', 'Damaged in Transit'),
+        ('size_issue', 'Size/Fit Issue'),
+        ('quality_issue', 'Quality Issue'),
+        ('changed_mind', 'Changed Mind'),
+        ('other', 'Other')
+    ]
+    
+    STATUS_CHOICES = [
+        ('requested', 'Return Requested'),
+        ('approved', 'Return Approved'),
+        ('rejected', 'Return Rejected'),
+        ('pickup_scheduled', 'Pickup Scheduled'),
+        ('picked_up', 'Picked Up'),
+        ('received', 'Return Received'),
+        ('quality_check', 'Quality Check'),
+        ('refund_initiated', 'Refund Initiated'),
+        ('refund_completed', 'Refund Completed'),
+        ('exchange_initiated', 'Exchange Initiated'),
+        ('exchange_completed', 'Exchange Completed')
+    ]
+    
+    return_id = models.CharField(max_length=50, unique=True, blank=True)
+    order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='return_requests')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.CharField(max_length=20, choices=RETURN_REASONS)
+    reason_description = models.TextField()
+    return_type = models.CharField(max_length=10, choices=[('refund', 'Refund'), ('exchange', 'Exchange')], default='refund')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
+    
+    # Financial Details
+    refund_amount = models.FloatField(null=True, blank=True)
+    processing_fee = models.FloatField(default=0.0)
+    
+    # Logistics
+    pickup_address = models.TextField(null=True, blank=True)
+    pickup_date = models.DateTimeField(null=True, blank=True)
+    pickup_partner = models.CharField(max_length=100, null=True, blank=True)
+    tracking_id = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Admin Notes
+    admin_notes = models.TextField(null=True, blank=True)
+    rejection_reason = models.TextField(null=True, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.return_id:
+            self.return_id = f"RET{random.randint(100000000, 999999999)}"
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Return {self.return_id} - {self.order.order_id}"
+
+# Return/Refund Status (Keep for backward compatibility)
 class ReturnStatus(models.Model):
     STATUS_CHOICES = [
         ("requested", "Return Requested"),

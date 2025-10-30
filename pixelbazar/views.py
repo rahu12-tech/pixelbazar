@@ -211,9 +211,45 @@ def get_products(request):
 
 @api_view(['GET'])
 def get_product_detail(request, product_id):
-    product = get_object_or_404(Product, id=product_id)
-    serializer = ProductSerializer(product, context={'request': request})
-    return Response(serializer.data)
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Enhanced product details with return policy
+        product_data = {
+            'id': product.id,
+            'product_name': product.product_name,
+            'product_titel': product.product_titel,
+            'product_price': product.product_price,
+            'product_oldPrice': product.product_oldPrice,
+            'product_discount': product.product_discount,
+            'product_brand': product.product_brand,
+            'product_type': product.product_type,
+            'product_warranty': product.product_warranty,
+            'product_des': product.product_des,
+            'product_img': request.build_absolute_uri(product.product_img.url) if product.product_img else None,
+            'product_category': product.product_category,
+            'is_featured': product.is_featured,
+            'is_trending': product.is_trending,
+            'is_flash_sale': product.is_flash_sale,
+            'sales_count': product.sales_count,
+            # Enhanced Return Policy Details
+            'return_policy': {
+                'is_returnable': getattr(product, 'is_returnable', True),
+                'return_days': getattr(product, 'return_policy_days', 7),
+                'return_policy_text': getattr(product, 'return_policy_text', None) or (f"Free delivery & return in {getattr(product, 'return_policy_days', 7)} days" if getattr(product, 'return_policy_days', 7) > 0 else "No return policy"),
+                'return_conditions': [
+                    'Product should be unused and in original packaging',
+                    'All accessories and tags should be intact',
+                    f'Return request should be raised within {getattr(product, "return_policy_days", 7)} days of delivery'
+                ] if getattr(product, 'is_returnable', True) else []
+            },
+            'stock_status': product.product_IsStock.status if product.product_IsStock else 'stock'
+        }
+        
+        return Response(product_data)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def search_products(request):
@@ -740,46 +776,195 @@ def track_order(request, order_id):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Return & Refund APIs
+# Enhanced Return Management APIs
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def request_return(request, order_id):
-    order = get_object_or_404(Order, order_id=order_id, user=request.user)
-    
-    if order.tracking.status != 'Delivered':
-        return Response({'error': 'Can only return delivered orders'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if order.return_status:
-        return Response({'error': 'Return already requested'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    reason = request.data.get('reason', '')
-    return_status = ReturnStatus.objects.create(
-        reason=reason,
-        refund_amount=order.final_amount
-    )
-    
-    order.return_status = return_status
-    order.save()
-    
-    return Response({
-        'message': 'Return request submitted',
-        'return_id': return_status.return_id
-    })
+    try:
+        order = get_object_or_404(Order, order_id=order_id, user=request.user)
+        
+        if order.tracking.status != 'Delivered':
+            return Response({
+                'success': False,
+                'message': 'Can only return delivered orders'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if order.return_status:
+            return Response({
+                'success': False,
+                'message': 'Return already requested'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check return eligibility (7 days)
+        from datetime import timedelta
+        from django.utils import timezone
+        delivery_date = order.tracking.updatedAt if order.tracking.status == 'Delivered' else order.created_at
+        return_deadline = delivery_date + timedelta(days=7)
+        
+        if timezone.now() > return_deadline:
+            return Response({
+                'success': False,
+                'message': 'Return period expired (7 days from delivery)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        return_status = ReturnStatus.objects.create(
+            reason=request.data.get('reason', ''),
+            refund_amount=order.final_amount
+        )
+        
+        order.return_status = return_status
+        order.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Return request submitted',
+            'return_id': return_status.return_id,
+            'refund_amount': return_status.refund_amount
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_return_status(request, return_id):
-    return_status = get_object_or_404(ReturnStatus, return_id=return_id)
-    order = get_object_or_404(Order, return_status=return_status, user=request.user)
-    
-    return Response({
-        'return_id': return_status.return_id,
-        'status': return_status.status,
-        'reason': return_status.reason,
-        'refund_amount': return_status.refund_amount,
-        'pickup_date': return_status.pickup_date,
-        'last_updated': return_status.updatedAt
-    })
+    try:
+        return_status = get_object_or_404(ReturnStatus, return_id=return_id)
+        order = get_object_or_404(Order, return_status=return_status, user=request.user)
+        
+        # Create timeline
+        timeline = [
+            {'status': 'Return Requested', 'completed': True, 'timestamp': return_status.updatedAt},
+            {'status': 'Return Approved', 'completed': return_status.status in ['approved', 'picked_up', 'refund_initiated', 'refund_completed']},
+            {'status': 'Pickup Scheduled', 'completed': return_status.status in ['picked_up', 'refund_initiated', 'refund_completed']},
+            {'status': 'Refund Initiated', 'completed': return_status.status in ['refund_initiated', 'refund_completed']},
+            {'status': 'Refund Completed', 'completed': return_status.status == 'refund_completed'}
+        ]
+        
+        return Response({
+            'return_id': return_status.return_id,
+            'order_id': order.order_id,
+            'status': return_status.status,
+            'reason': return_status.reason,
+            'refund_amount': return_status.refund_amount,
+            'pickup_date': return_status.pickup_date,
+            'timeline': timeline,
+            'last_updated': return_status.updatedAt
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_returns(request):
+    try:
+        orders_with_returns = Order.objects.filter(user=request.user, return_status__isnull=False)
+        return_data = []
+        
+        for order in orders_with_returns:
+            return_data.append({
+                'return_id': order.return_status.return_id,
+                'order_id': order.order_id,
+                'status': order.return_status.status,
+                'reason': order.return_status.reason,
+                'refund_amount': order.return_status.refund_amount,
+                'created_at': order.return_status.updatedAt
+            })
+        
+        return Response({
+            'success': True,
+            'returns': return_data
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_delivery_status(request):
+    try:
+        user = request.user
+        from django.utils import timezone
+        
+        if user.account_created_at:
+            days_since_signup = (timezone.now() - user.account_created_at).days
+        else:
+            days_since_signup = 999
+        
+        return Response({
+            'free_delivery_eligible': days_since_signup <= 2,
+            'days_left': max(0, 2 - days_since_signup),
+            'account_age_days': days_since_signup,
+            'message': f'Free delivery for {max(0, 2 - days_since_signup)} more days' if days_since_signup <= 2 else 'Free delivery on orders above ₹500'
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Enhanced Delivery Charge Calculator
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def calculate_delivery_charges(request):
+    try:
+        pincode = request.data.get('pincode')
+        cart_total = float(request.data.get('cart_total', 0))
+        user = request.user
+        
+        # Check user's free delivery eligibility (new users get 2 days free delivery)
+        if user.account_created_at:
+            from django.utils import timezone
+            days_since_signup = (timezone.now() - user.account_created_at).days
+            if days_since_signup <= 2:
+                return Response({
+                    'delivery_charges': 0,
+                    'free_delivery': True,
+                    'message': f'Free delivery for new users! {2 - days_since_signup} days left',
+                    'reason': 'new_user_benefit'
+                })
+        
+        # Free delivery for orders above ₹500
+        if cart_total >= 500:
+            return Response({
+                'delivery_charges': 0,
+                'free_delivery': True,
+                'message': 'Free delivery on orders above ₹500',
+                'reason': 'minimum_order_value'
+            })
+        
+        # Distance-based pricing
+        metro_cities = ['110001', '400001', '560001', '600001', '700001', '500001']
+        
+        if pincode[:3] in [city[:3] for city in metro_cities]:
+            delivery_charges = 40  # Metro cities
+            estimated_days = 3
+        else:
+            delivery_charges = 60  # Other cities
+            estimated_days = 5
+        
+        return Response({
+            'delivery_charges': delivery_charges,
+            'free_delivery': False,
+            'estimated_days': estimated_days,
+            'message': f'Delivery charges: ₹{delivery_charges}',
+            'reason': 'standard_charges'
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Cancel Order API
 @api_view(['POST'])
