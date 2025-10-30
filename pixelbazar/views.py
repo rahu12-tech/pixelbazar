@@ -612,7 +612,16 @@ def get_order_history(request):
                     'updatedAt': order.tracking.updatedAt.isoformat() if order.tracking and order.tracking.updatedAt else order.created_at.isoformat()
                 },
                 'createdAt': order.created_at.isoformat(),
-                'products': products_list
+                'products': products_list,
+                'return_requests': [
+                    {
+                        'return_id': req.return_id,
+                        'status': req.status,
+                        'reason': req.reason,
+                        'refund_amount': req.refund_amount,
+                        'created_at': req.created_at.isoformat()
+                    } for req in order.return_requests.all()
+                ] if hasattr(order, 'return_requests') else []
             }
             order_data.append(order_info)
         
@@ -835,13 +844,56 @@ def get_return_status(request, return_id):
         return_status = get_object_or_404(ReturnStatus, return_id=return_id)
         order = get_object_or_404(Order, return_status=return_status, user=request.user)
         
-        # Create timeline
+        # Enhanced timeline with all stages
         timeline = [
-            {'status': 'Return Requested', 'completed': True, 'timestamp': return_status.updatedAt},
-            {'status': 'Return Approved', 'completed': return_status.status in ['approved', 'picked_up', 'refund_initiated', 'refund_completed']},
-            {'status': 'Pickup Scheduled', 'completed': return_status.status in ['picked_up', 'refund_initiated', 'refund_completed']},
-            {'status': 'Refund Initiated', 'completed': return_status.status in ['refund_initiated', 'refund_completed']},
-            {'status': 'Refund Completed', 'completed': return_status.status == 'refund_completed'}
+            {
+                'status': 'Return Requested',
+                'description': 'Return request submitted successfully',
+                'completed': True,
+                'timestamp': return_status.updatedAt
+            },
+            {
+                'status': 'Return Approved',
+                'description': 'Return request approved by admin',
+                'completed': return_status.status in ['approved', 'pickup_scheduled', 'picked_up', 'received', 'quality_check', 'refund_initiated', 'refund_completed'],
+                'timestamp': None
+            },
+            {
+                'status': 'Pickup Scheduled',
+                'description': 'Pickup scheduled with delivery partner',
+                'completed': return_status.status in ['pickup_scheduled', 'picked_up', 'received', 'quality_check', 'refund_initiated', 'refund_completed'],
+                'timestamp': return_status.pickup_date
+            },
+            {
+                'status': 'Picked Up',
+                'description': 'Product picked up from your location',
+                'completed': return_status.status in ['picked_up', 'received', 'quality_check', 'refund_initiated', 'refund_completed'],
+                'timestamp': None
+            },
+            {
+                'status': 'Return Received',
+                'description': 'Product received at our warehouse',
+                'completed': return_status.status in ['received', 'quality_check', 'refund_initiated', 'refund_completed'],
+                'timestamp': None
+            },
+            {
+                'status': 'Quality Check',
+                'description': 'Product quality verification in progress',
+                'completed': return_status.status in ['quality_check', 'refund_initiated', 'refund_completed'],
+                'timestamp': None
+            },
+            {
+                'status': 'Refund Initiated',
+                'description': 'Refund process started',
+                'completed': return_status.status in ['refund_initiated', 'refund_completed'],
+                'timestamp': None
+            },
+            {
+                'status': 'Refund Completed',
+                'description': 'Refund credited to your account',
+                'completed': return_status.status == 'refund_completed',
+                'timestamp': None
+            }
         ]
         
         return Response({
@@ -1346,7 +1398,16 @@ def get_orders(request):
                     'updatedAt': order.tracking.updatedAt.isoformat() if order.tracking and order.tracking.updatedAt else order.created_at.isoformat()
                 },
                 'createdAt': order.created_at.isoformat(),
-                'products': products_list
+                'products': products_list,
+                'return_requests': [
+                    {
+                        'return_id': req.return_id,
+                        'status': req.status,
+                        'reason': req.reason,
+                        'refund_amount': req.refund_amount,
+                        'created_at': req.created_at.isoformat()
+                    } for req in order.return_requests.all()
+                ] if hasattr(order, 'return_requests') else []
             }
             orders_data.append(order_data)
         
