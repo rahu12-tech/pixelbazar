@@ -47,6 +47,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_editable = ['is_flash_sale', 'is_featured', 'is_trending']
     search_fields = ['product_name', 'product_brand']
     readonly_fields = ['sales_count', 'last_sale_date', 'created_at']
+    autocomplete_fields = ['category', 'subcategory']
     
     class Media:
         js = ('admin/js/dynamic_subcategory.js',)
@@ -160,7 +161,6 @@ class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'parent_category', 'slug', 'is_active', 'created_at']
     list_filter = ['parent_category', 'is_active', 'created_at']
     search_fields = ['name', 'slug']
-    prepopulated_fields = {'slug': ('name',)}
     list_editable = ['is_active']
     
     def get_queryset(self, request):
@@ -172,6 +172,7 @@ class SubcategoryAdmin(admin.ModelAdmin):
     list_filter = ['category', 'is_active', 'created_at']
     search_fields = ['name', 'slug']
     list_editable = ['is_active']
+    autocomplete_fields = ['category']
 
 admin.site.register(ProductStock)
 admin.site.register(OrderProduct)
