@@ -77,6 +77,7 @@ urlpatterns = [
     # Admin APIs
     path('admin/orders/<str:order_id>/update-status/', views.update_order_status, name='update_order_status'),
     path('admin/get-subcategories/', views.get_subcategories, name='get_subcategories'),
+    path('api/admin/get-subcategories/', views.get_subcategories, name='api_get_subcategories'),
     
     # Debug APIs
     path('debug/products/', debug_products, name='debug_products'),

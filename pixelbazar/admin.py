@@ -14,11 +14,11 @@ class ProductAdminForm(forms.ModelForm):
                 category_id = int(self.data.get('category'))
                 self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
             except (ValueError, TypeError):
-                pass
+                self.fields['subcategory'].queryset = Subcategory.objects.none()
         elif self.instance.pk and self.instance.category:
             self.fields['subcategory'].queryset = self.instance.category.subcategories_list.all()
         else:
-            self.fields['subcategory'].queryset = Subcategory.objects.none()
+            self.fields['subcategory'].queryset = Subcategory.objects.all()
     
     class Meta:
         model = Product
@@ -47,7 +47,6 @@ class ProductAdmin(admin.ModelAdmin):
     list_editable = ['is_flash_sale', 'is_featured', 'is_trending']
     search_fields = ['product_name', 'product_brand']
     readonly_fields = ['sales_count', 'last_sale_date', 'created_at']
-    autocomplete_fields = ['category', 'subcategory']
     
     class Media:
         js = ('admin/js/dynamic_subcategory.js',)
@@ -169,7 +168,6 @@ class SubcategoryAdmin(admin.ModelAdmin):
     list_filter = ['category', 'is_active', 'created_at']
     search_fields = ['name', 'slug']
     list_editable = ['is_active']
-    autocomplete_fields = ['category']
 
 admin.site.register(ProductStock)
 admin.site.register(OrderProduct)
