@@ -428,7 +428,6 @@ class Category(models.Model):
     
     name = models.CharField(max_length=100)
     slug = models.CharField(max_length=100, choices=CATEGORY_CHOICES, unique=True)
-    parent_category = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subcategories')
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -483,10 +482,6 @@ class Subcategory(models.Model):
         ('fruits-vegetables', 'Fruits & Vegetables'),
         ('dairy', 'Dairy'),
         ('snacks', 'Snacks'),
-        
-        # Music
-        ('music-instruments', 'Music Instruments'),
-        ('audio-equipment', 'Audio Equipment'),
     ]
     
     name = models.CharField(max_length=100)
@@ -494,6 +489,10 @@ class Subcategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories_list')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name_plural = "Subcategories"
+        ordering = ['category', 'name']
     
     def __str__(self):
         return f"{self.category.name} - {self.name}"
