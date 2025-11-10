@@ -1,7 +1,28 @@
 from django.contrib import admin
+from django import forms
 from .models import *
 
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+class ProductAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Category change par subcategory filter karo
+        if 'category' in self.data:
+            try:
+                category_id = int(self.data.get('category'))
+                self.fields['subcategory'].queryset = Subcategory.objects.filter(category_id=category_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.category:
+            self.fields['subcategory'].queryset = self.instance.category.subcategories_list.all()
+        else:
+            self.fields['subcategory'].queryset = Subcategory.objects.none()
+    
+    class Meta:
+        model = Product
+        fields = '__all__'
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
@@ -20,11 +41,20 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['product_name', 'product_price', 'product_category', 'is_flash_sale', 'is_featured', 'is_trending', 'sales_count']
-    list_filter = ['product_type', 'product_category', 'is_flash_sale', 'is_featured', 'is_trending', 'created_at']
-    list_editable = ['product_category', 'is_flash_sale', 'is_featured', 'is_trending']
+    form = ProductAdminForm
+    list_display = ['product_name', 'product_price', 'category', 'subcategory', 'is_flash_sale', 'is_featured', 'is_trending', 'sales_count']
+    list_filter = ['product_type', 'category', 'subcategory', 'is_flash_sale', 'is_featured', 'is_trending', 'created_at']
+    list_editable = ['is_flash_sale', 'is_featured', 'is_trending']
     search_fields = ['product_name', 'product_brand']
     readonly_fields = ['sales_count', 'last_sale_date', 'created_at']
+    
+    class Media:
+        js = ('admin/js/dynamic_subcategory.js',)
+    
+    def save_model(self, request, obj, form, change):
+        if obj.category:
+            obj.product_category = obj.category.slug
+        super().save_model(request, obj, form, change)
 
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
@@ -127,10 +157,21 @@ class MusicBannerAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'is_active', 'created_at']
-    list_filter = ['is_active', 'created_at']
-    search_fields = ['name']
+    list_display = ['name', 'parent_category', 'slug', 'is_active', 'created_at']
+    list_filter = ['parent_category', 'is_active', 'created_at']
+    search_fields = ['name', 'slug']
     prepopulated_fields = {'slug': ('name',)}
+    list_editable = ['is_active']
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('parent_category')
+
+@admin.register(Subcategory)
+class SubcategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category', 'slug', 'is_active', 'created_at']
+    list_filter = ['category', 'is_active', 'created_at']
+    search_fields = ['name', 'slug']
+    list_editable = ['is_active']
 
 admin.site.register(ProductStock)
 admin.site.register(OrderProduct)

@@ -57,6 +57,7 @@ urlpatterns = [
     path('returns/<str:return_id>/status/', views.get_return_status, name='get_return_status'),
     path('returns/', views.get_user_returns, name='get_user_returns'),
     path('user/delivery-status/', views.get_user_delivery_status, name='get_user_delivery_status'),
+    path('api/check-admin/', views.check_admin, name='check_admin'),
     path('calculate-delivery/', views.calculate_delivery_charges, name='calculate_delivery_charges'),
     
     # Legacy endpoints for backward compatibility
@@ -75,6 +76,7 @@ urlpatterns = [
     
     # Admin APIs
     path('admin/orders/<str:order_id>/update-status/', views.update_order_status, name='update_order_status'),
+    path('admin/get-subcategories/', views.get_subcategories, name='get_subcategories'),
     
     # Debug APIs
     path('debug/products/', debug_products, name='debug_products'),

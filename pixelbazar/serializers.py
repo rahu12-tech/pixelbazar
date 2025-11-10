@@ -6,9 +6,31 @@ class ProductStockSerializer(serializers.ModelSerializer):
         model = ProductStock
         fields = '__all__'
 
+class SubcategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subcategory
+        fields = ['id', 'name', 'slug']
+
+class CategoryDetailSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug', 'image']
+    
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
 class ProductSerializer(serializers.ModelSerializer):
     product_IsStock = ProductStockSerializer(read_only=True)
     product_img = serializers.SerializerMethodField()
+    category = CategoryDetailSerializer(read_only=True)
+    subcategory = SubcategorySerializer(read_only=True)
     
     class Meta:
         model = Product

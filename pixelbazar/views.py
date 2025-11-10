@@ -17,6 +17,7 @@ from django.contrib.auth.hashers import make_password, check_password
 import random
 from django.core.mail import send_mail
 from .email_utils import send_email_via_brevo
+from django.http import JsonResponse
 
 # Razorpay client - initialize only when needed
 def get_razorpay_client():
@@ -39,6 +40,8 @@ def get_user_profile(request):
             'last_name': user.last_name,
             'number': user.number,
             'gender': user.gender,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
             'profilePic': request.build_absolute_uri(user.profilePic.url) if user.profilePic else None
         }
         return Response({'user': user_data})
@@ -194,7 +197,10 @@ def login(request):
                     'id': user.id,
                     'email': user.email,
                     'username': user.username,
-                    'first_name': user.first_name
+                    'first_name': user.first_name,
+                    'is_staff': user.is_staff,
+                    'is_superuser': user.is_superuser,
+                    'role': 'admin' if (user.is_staff or user.is_superuser) else 'user'
                 }
             })
         else:
@@ -205,7 +211,7 @@ def login(request):
 # Product APIs
 @api_view(['GET'])
 def get_products(request):
-    products = Product.objects.all()
+    products = Product.objects.select_related('category', 'subcategory').all()
     serializer = ProductSerializer(products, many=True, context={'request': request})
     return Response(serializer.data)
 
@@ -255,16 +261,37 @@ def get_product_detail(request, product_id):
 def search_products(request):
     query = request.GET.get('q', '')
     if query:
-        products = Product.objects.filter(
+        products = Product.objects.select_related('category', 'subcategory').filter(
             Q(product_name__icontains=query) | 
             Q(product_brand__icontains=query) |
             Q(product_type__icontains=query)
         )
     else:
-        products = Product.objects.all()
+        products = Product.objects.select_related('category', 'subcategory').all()
     
-    serializer = ProductSerializer(products, many=True, context={'request': request})
-    return Response(serializer.data)
+    data = []
+    for product in products:
+        product_data = {
+            'id': product.id,
+            'product_name': product.product_name,
+            'product_titel': product.product_titel,
+            'product_price': product.product_price,
+            'product_oldPrice': product.product_oldPrice,
+            'product_discount': product.product_discount,
+            'product_brand': product.product_brand,
+            'product_img': request.build_absolute_uri(product.product_img.url) if product.product_img else None,
+            'product_category': product.category.slug if product.category else product.product_category,
+            'category': {
+                'name': product.category.name,
+                'slug': product.category.slug
+            } if product.category else None,
+            'subcategory': {
+                'name': product.subcategory.name,
+                'slug': product.subcategory.slug
+            } if product.subcategory else None
+        }
+        data.append(product_data)
+    return Response(data)
 
 # Cart APIs
 @api_view(['GET'])
@@ -964,6 +991,18 @@ def get_user_delivery_status(request):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_admin(request):
+    user = request.user
+    return Response({
+        'is_admin': user.is_staff or user.is_superuser,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
+        'user_id': user.id,
+        'email': user.email
+    })
 
 # Enhanced Delivery Charge Calculator
 @api_view(['POST'])
@@ -2086,26 +2125,82 @@ def get_music_banner(request):
 @api_view(['GET'])
 def get_products_by_category(request, category):
     try:
-        products = Product.objects.filter(product_category=category)
-        serializer = ProductSerializer(products, many=True, context={'request': request})
+        # Search by category name, slug, or subcategory
+        products = Product.objects.select_related('category', 'subcategory').filter(
+            Q(category__name__icontains=category) | 
+            Q(category__slug__icontains=category) |
+            Q(subcategory__name__icontains=category) |
+            Q(subcategory__slug__icontains=category) |
+            Q(product_category__icontains=category)
+        ).distinct()
+        
+        data = []
+        for product in products:
+            product_data = {
+                'id': product.id,
+                'product_name': product.product_name,
+                'product_titel': product.product_titel,
+                'product_price': product.product_price,
+                'product_oldPrice': product.product_oldPrice,
+                'product_discount': product.product_discount,
+                'product_brand': product.product_brand,
+                'product_img': request.build_absolute_uri(product.product_img.url) if product.product_img else None,
+                'product_category': product.category.slug if product.category else product.product_category,
+                'category': {
+                    'name': product.category.name,
+                    'slug': product.category.slug
+                } if product.category else None,
+                'subcategory': {
+                    'name': product.subcategory.name,
+                    'slug': product.subcategory.slug
+                } if product.subcategory else None,
+                'is_featured': product.is_featured,
+                'is_trending': product.is_trending,
+                'sales_count': product.sales_count
+            }
+            data.append(product_data)
+        
         return Response({
             'status': 200,
-            'products': serializer.data,
+            'products': data,
             'category': category,
-            'total_products': products.count()
+            'total_products': len(data)
         })
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Category APIs
+# Enhanced Category APIs
 @api_view(['GET'])
 def get_categories(request):
     try:
-        categories = Category.objects.filter(is_active=True)
-        serializer = CategorySerializer(categories, many=True, context={'request': request})
+        # Get main categories (no parent)
+        main_categories = Category.objects.filter(parent_category=None, is_active=True)
+        # Get subcategories (have parent)
+        subcategories = Category.objects.filter(parent_category__isnull=False, is_active=True)
+        
+        main_cat_data = []
+        for cat in main_categories:
+            cat_data = {
+                'id': cat.id,
+                'name': cat.name,
+                'slug': cat.slug,
+                'image': request.build_absolute_uri(cat.image.url) if cat.image else None,
+                'description': cat.description,
+                'subcategories': [
+                    {
+                        'id': sub.id,
+                        'name': sub.name,
+                        'slug': sub.slug,
+                        'image': request.build_absolute_uri(sub.image.url) if sub.image else None
+                    } for sub in cat.subcategories.filter(is_active=True)
+                ]
+            }
+            main_cat_data.append(cat_data)
+        
         return Response({
             'status': 200,
-            'categories': serializer.data
+            'categories': main_cat_data,
+            'total_categories': len(main_cat_data)
         })
     except Exception as e:
         return Response({
@@ -2170,3 +2265,8 @@ def get_contacts(request):
             'status': 500,
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# Dynamic Subcategory API for Admin
+def get_subcategories(request):
+    category_id = request.GET.get('category_id')
+    subcategories = Subcategory.objects.filter(category_id=category_id).values('id', 'name')
+    return JsonResponse({'subcategories': list(subcategories)})

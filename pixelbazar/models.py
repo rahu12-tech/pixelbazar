@@ -16,13 +16,13 @@ class ProductStock(models.Model):
 # Product Model
 class Product(models.Model):
     CATEGORY_CHOICES = [
-        ('phones', 'Phones'),
-        ('laptops', 'Laptops'),
-        ('speakers', 'Speakers'),
-        ('headphones', 'Headphones'),
-        ('cameras', 'Cameras'),
-        ('music', 'Music'),
+        ('mobiles-tablets', 'Mobiles & Tablets'),
         ('electronics', 'Electronics'),
+        ('fashion', 'Fashion'),
+        ('home-furniture', 'Home & Furniture'),
+        ('tv-appliances', 'TV & Appliances'),
+        ('beauty', 'Beauty'),
+        ('food-grocery', 'Food & Grocery'),
     ]
     
     product_name = models.CharField(max_length=200)
@@ -43,12 +43,19 @@ class Product(models.Model):
     location_lat = models.FloatField(null=True, blank=True)
     location_lng = models.FloatField(null=True, blank=True)
     product_category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, blank=True, null=True)
+    category = models.ForeignKey('Category', on_delete=models.CASCADE, null=True, blank=True)
+    subcategory = models.ForeignKey('Subcategory', on_delete=models.CASCADE, null=True, blank=True)
     is_featured = models.BooleanField(default=False)
     is_trending = models.BooleanField(default=False)
     is_flash_sale = models.BooleanField(default=False)
     last_sale_date = models.DateTimeField(null=True, blank=True)
     sales_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if self.category and not self.product_category:
+            self.product_category = self.category.slug
+        super().save(*args, **kwargs)
 
 class User(AbstractUser):
     profilePic = models.ImageField(null=True, blank=True)
@@ -72,7 +79,7 @@ class User(AbstractUser):
             raise ValueError('Email required')
         email = self.normalize_email(email)
         user = self.__class__(email=email, **extra_fields)
-        user.set_password(password)  # ✅ password hash ho jaayega
+        user.set_password(password)  
         user.save(using=self._db)
         return user
 
@@ -390,7 +397,12 @@ class GiftCard(models.Model):
 class MusicBanner(models.Model):
     title = models.CharField(max_length=200)
     subtitle = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='banners/')
+    image = models.ImageField(upload_to='music_banners/')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.titles.ImageField(upload_to='banners/')
     category = models.CharField(max_length=50, default='music')
     products = models.ManyToManyField(Product, blank=True, related_name='music_banners')
     price_range_min = models.FloatField(null=True, blank=True)
@@ -404,23 +416,84 @@ class MusicBanner(models.Model):
         return self.title
 
 class Category(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    CATEGORY_CHOICES = [
+        ('mobiles-tablets', 'Mobiles & Tablets'),
+        ('electronics', 'Electronics'), 
+        ('fashion', 'Fashion'),
+        ('home-furniture', 'Home & Furniture'),
+        ('tv-appliances', 'TV & Appliances'),
+        ('beauty', 'Beauty'),
+        ('food-grocery', 'Food & Grocery'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    slug = models.CharField(max_length=100, choices=CATEGORY_CHOICES, unique=True)
+    parent_category = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subcategories')
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            from django.utils.text import slugify
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
     class Meta:
         verbose_name_plural = "Categories"
-        ordering = ['name']
+        ordering = ['display_order', 'name']
 
     def __str__(self):
         return self.name
+
+class Subcategory(models.Model):
+    SUBCATEGORY_CHOICES = [
+        # Mobiles & Tablets
+        ('smartphones', 'Smartphones'),
+        ('tablets', 'Tablets'),
+        ('mobile-accessories', 'Mobile Accessories'),
+        
+        # Electronics
+        ('laptops', 'Laptops'),
+        ('headphones', 'Headphones'),
+        ('speakers', 'Speakers'),
+        ('cameras', 'Cameras'),
+        ('gaming', 'Gaming'),
+        
+        # Fashion
+        ('mens-clothing', 'Men\'s Clothing'),
+        ('womens-clothing', 'Women\'s Clothing'),
+        ('footwear', 'Footwear'),
+        ('accessories', 'Accessories'),
+        
+        # Home & Furniture
+        ('furniture', 'Furniture'),
+        ('home-decor', 'Home Decor'),
+        ('kitchen', 'Kitchen'),
+        
+        # TV & Appliances
+        ('televisions', 'Televisions'),
+        ('refrigerators', 'Refrigerators'),
+        ('washing-machines', 'Washing Machines'),
+        ('air-conditioners', 'Air Conditioners'),
+        
+        # Beauty
+        ('skincare', 'Skincare'),
+        ('makeup', 'Makeup'),
+        ('haircare', 'Haircare'),
+        
+        # Food & Grocery
+        ('fruits-vegetables', 'Fruits & Vegetables'),
+        ('dairy', 'Dairy'),
+        ('snacks', 'Snacks'),
+        
+        # Music
+        ('music-instruments', 'Music Instruments'),
+        ('audio-equipment', 'Audio Equipment'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    slug = models.CharField(max_length=100, choices=SUBCATEGORY_CHOICES, unique=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories_list')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.category.name} - {self.name}"
