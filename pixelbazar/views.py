@@ -2173,14 +2173,10 @@ def get_products_by_category(request, category):
 @api_view(['GET'])
 def get_categories(request):
     try:
-        # Get main categories (no parent)
-        main_categories = Category.objects.filter(parent_category=None, is_active=True)
-        # Get subcategories (have parent)
-        subcategories = Category.objects.filter(parent_category__isnull=False, is_active=True)
-        
-        main_cat_data = []
-        for cat in main_categories:
-            cat_data = {
+        categories = Category.objects.filter(is_active=True)
+        cat_data = []
+        for cat in categories:
+            cat_data.append({
                 'id': cat.id,
                 'name': cat.name,
                 'slug': cat.slug,
@@ -2190,17 +2186,15 @@ def get_categories(request):
                     {
                         'id': sub.id,
                         'name': sub.name,
-                        'slug': sub.slug,
-                        'image': request.build_absolute_uri(sub.image.url) if sub.image else None
-                    } for sub in cat.subcategories.filter(is_active=True)
+                        'slug': sub.slug
+                    } for sub in cat.subcategories_list.filter(is_active=True)
                 ]
-            }
-            main_cat_data.append(cat_data)
+            })
         
         return Response({
             'status': 200,
-            'categories': main_cat_data,
-            'total_categories': len(main_cat_data)
+            'categories': cat_data,
+            'total_categories': len(cat_data)
         })
     except Exception as e:
         return Response({
