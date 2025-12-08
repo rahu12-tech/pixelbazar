@@ -128,16 +128,21 @@ def signup(request):
             f'Your OTP code is: {otp_code}'
         )
         if success:
-            # In debug mode, also return the OTP for testing
             if settings.DEBUG:
                 return Response({'msg': 'OTP sent', 'otp': otp_code})
             else:
                 return Response({'msg': 'OTP sent'})
         else:
             print("Brevo email error:", response)
+            # In debug mode, return OTP even if email fails
+            if settings.DEBUG:
+                return Response({'msg': 'OTP generated (email failed)', 'otp': otp_code})
             return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
         print("Email send error:", e)
+        # In debug mode, return OTP even if email fails
+        if settings.DEBUG:
+            return Response({'msg': 'OTP generated (email error)', 'otp': otp_code})
         return Response({'msg': 'Failed to send OTP'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
